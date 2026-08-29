@@ -1,0 +1,26 @@
+# Copyright (c) National University of Singapore.
+# Licensed under the MIT License.
+#
+# The image builds DPDK and clones o-du/phy itself, so nothing already present
+# in the working tree is needed -- keep host build output and the submodule
+# (~5 MB of libxran.a alone) out of the build context.
+
+3p/
+build/
+venv/
+
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.o
+*.a
+
+.git/
+.gitignore
+.gitmodules
+.vscode/
+
+docker/
+*.md
+!tests/requirements.txt

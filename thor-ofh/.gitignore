@@ -1,0 +1,14 @@
+*.o
+das_dpdk/das_dpdk
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Build directory
+build/
+
+# VSCode 
+.vscode/

@@ -1,0 +1,12 @@
+# Copyright (c) National University of Singapore.
+# Licensed under the MIT License.
+#
+# Python dependencies for the thor_fhaul_proxy integration tests.
+# Install into the repo venv:  venv/bin/pip install -r tests/requirements.txt
+
+iniconfig==2.3.0
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1
+scapy==2.6.1

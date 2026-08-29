@@ -1,0 +1,116 @@
+# Copyright (c) National University of Singapore.
+# Licensed under the MIT License.
+#
+# Example compose setup for thor_fhaul_proxy. Run from the repository root:
+#
+#     docker compose -f docker/docker-compose.yml run --rm tests
+#     docker compose -f docker/docker-compose.yml up proxy
+#
+# `tests` is self-contained and runs anywhere. `proxy` needs real hardware --
+# read the comments on it before starting it.
+
+name: ranbooster
+
+services:
+
+  # -------------------------------------------------------------------------
+  # Full test suite: unit tests, then the veth integration tests.
+  #
+  # Self-contained. The veth pair is created inside the container's own network
+  # namespace, so it neither needs nor touches host networking, and concurrent
+  # runs cannot collide.
+  # -------------------------------------------------------------------------
+  tests:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: test
+    platform: linux/amd64
+    cap_add:
+      - NET_ADMIN   # create the veth pair, set MTU/promisc
+      - NET_RAW     # AF_PACKET sockets, for both the PMD and scapy
+      - IPC_LOCK    # EAL memory locking
+    # DPDK runs with --no-huge here, but its heap still wants more than the
+    # 64 MB default /dev/shm.
+    shm_size: 1g
+    # sysctl -w net.ipv6.conf.<iface>.disable_ipv6=1 on the veth ends, to stop
+    # the kernel emitting MLD/RS frames from the proxy's own MAC.
+    sysctls:
+      - net.ipv6.conf.default.disable_ipv6=1
+    # Pass pytest arguments through, e.g.
+    #   docker compose -f docker/docker-compose.yml run --rm tests integration -k vlan
+    command: []
+
+  # -------------------------------------------------------------------------
+  # The proxy against a real NIC.
+  #
+  # THIS ONE IS HARDWARE-SPECIFIC -- edit the device and the MACs below to match
+  # your deployment before starting it. See config/README.md for the topology
+  # and config/*/run_middlebox.sh for working argument sets.
+  #
+  # Assumes the VF is already bound to vfio-pci by config/*/setup_interfaces.sh
+  # on the host, and that hugepages are reserved.
+  # -------------------------------------------------------------------------
+  proxy:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runtime
+    platform: linux/amd64
+    # The datapath polls one core flat out; pin it away from the housekeeping
+    # cores and away from whatever the L1s use.
+    cpuset: "1"
+    cap_add:
+      - IPC_LOCK    # EAL memory locking
+      - SYS_NICE    # SCHED_RR for the datapath; drop it if you pass --no-rt
+      - NET_ADMIN
+    devices:
+      # VFIO access to the NIC's VF. /dev/vfio/<group> is the group the VF is
+      # in -- `readlink /sys/bus/pci/devices/0000:70:11.2/iommu_group`.
+      - /dev/vfio/vfio:/dev/vfio/vfio
+      - /dev/vfio/108:/dev/vfio/108
+    volumes:
+      - /dev/hugepages:/dev/hugepages
+      # Exposes the control socket so `thor_ctl.sh` can reach it from the host.
+      - ranbooster-run:/var/run/ranbooster
+    # Middlebox port, RU MAC, RU VLAN, PRBs, then <L1 MAC> <L1 VLAN> per L1,
+    # then how many to start with. Further L1s are attached at runtime.
+    command:
+      - -l
+      - "1"
+      - -a
+      - "0000:70:11.2"
+      - --file-prefix
+      - middlebox
+      - --
+      - "0000:70:11.2"
+      - "50:7c:6f:45:f3:04"   # RU MAC
+      - "5"                   # RU VLAN
+      - "106"                 # PRBs
+      - "00:11:22:33:44:77"   # L1 #0 MAC
+      - "5"                   # L1 #0 VLAN
+      - "1"                   # start with one L1
+      - --ctrl-sock
+      - /var/run/ranbooster/thor_fhaul_proxy.sock
+
+  # -------------------------------------------------------------------------
+  # Control client. Attaches to the proxy's socket to add/remove L1s:
+  #
+  #   docker compose -f docker/docker-compose.yml run --rm ctl list
+  #   docker compose -f docker/docker-compose.yml run --rm ctl add 00:11:22:33:44:88 5
+  # -------------------------------------------------------------------------
+  ctl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runtime
+    platform: linux/amd64
+    volumes:
+      - ranbooster-run:/var/run/ranbooster
+    entrypoint: ["/usr/local/bin/thor_ctl.sh"]
+    command: ["list"]
+    depends_on:
+      - proxy
+
+volumes:
+  ranbooster-run:
