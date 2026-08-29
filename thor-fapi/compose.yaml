@@ -1,0 +1,50 @@
+name: thor-nfapi
+
+services:
+  nfapi-proxy:
+    image: thor-nfapi-proxy:release
+    platform: linux/amd64
+    build:
+      context: .
+      target: runtime
+      args:
+        THOR_GIT_COMMIT_HASH: ${THOR_GIT_COMMIT_HASH:-container}
+        THOR_GIT_COMMIT_DATE: ${THOR_GIT_COMMIT_DATE:-unknown}
+    network_mode: host
+    environment:
+      NFAPI_TRACE_LEVEL: ${NFAPI_TRACE_LEVEL:-info}
+      THOR_CTRL_SOCK: /var/run/thor_nfapi_proxy.sock
+    volumes:
+      - thor-runtime:/var/run
+    command:
+      - --p5-vnf-port
+      - "50001"
+      - --p5-port
+      - "50002"
+      - --p7-port
+      - "50012"
+    restart: unless-stopped
+    stop_grace_period: 10s
+
+  controller:
+    image: thor-nfapi-proxy:release
+    platform: linux/amd64
+    profiles: ["tools"]
+    network_mode: host
+    entrypoint: ["control_client"]
+    volumes:
+      - thor-runtime:/var/run
+
+  tests:
+    platform: linux/amd64
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+      args:
+        THOR_GIT_COMMIT_HASH: ${THOR_GIT_COMMIT_HASH:-container-test}
+        THOR_GIT_COMMIT_DATE: ${THOR_GIT_COMMIT_DATE:-unknown}
+    init: true
+
+volumes:
+  thor-runtime:

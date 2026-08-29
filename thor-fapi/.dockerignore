@@ -1,0 +1,11 @@
+.git
+.github
+.vscode
+build
+build-*
+*.csv
+*.json
+__pycache__
+*.pyc
+core
+core.*
