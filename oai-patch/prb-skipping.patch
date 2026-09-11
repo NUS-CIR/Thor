@@ -1,0 +1,27 @@
+diff --git a/openair1/SCHED_NR/phy_procedures_nr_gNB.c b/openair1/SCHED_NR/phy_procedures_nr_gNB.c
+index ead0b624f7..d35a067795 100644
+--- a/openair1/SCHED_NR/phy_procedures_nr_gNB.c
++++ b/openair1/SCHED_NR/phy_procedures_nr_gNB.c
+@@ -1028,6 +1028,10 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
+     c16_t **rxdataF = gNB->common_vars.rxdataF[pucch->beam_nb];
+     pucch_decode_done = 1;
+     nfapi_nr_pucch_pdu_t *pucch_pdu = &pucch->pucch_pdu;
++    if (pucch_pdu->rnti == 0xFFF0) {
++      pucch->active = false;
++      continue;
++    }
+     UL_INFO->uci_ind.uci_list = UL_INFO->uci_pdu_list;
+     nfapi_nr_uci_t *uci = UL_INFO->uci_ind.uci_list + UL_INFO->uci_ind.num_ucis;
+     UL_INFO->uci_ind.sfn = frame_rx;
+@@ -1074,6 +1078,11 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, N
+     AssertFatal(ulsch_harq != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);
+     if (!(ulsch->active && ulsch->frame == frame_rx && ulsch->slot == slot_rx && !ulsch->handled))
+       continue;
++    nfapi_nr_pusch_pdu_t *pdu = &ulsch_harq->ulsch_pdu;
++    if (pdu->rnti == 0xFFF0) {
++      ulsch->active = false;
++      continue;
++    }
+     LOG_D(PHY, "PUSCH ID %d with RNTI %x detection started in frame %d slot %d\n", ULSCH_id, ulsch->rnti, frame_rx, slot_rx);
+ 
+ #ifdef DEBUG_RXDATA

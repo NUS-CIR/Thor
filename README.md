@@ -15,6 +15,8 @@ Thor interposes two lightweight, standards-compliant middleboxes on the existing
 
 Both directories include their own build scripts, unit/integration tests, and the control clients used to manage L1 lifecycles at runtime (add/ remove/ activate/ deactivate).
 
+In addition, [`oai-patch/`](./oai-patch) contains the **PRB-skipping** patch for the OpenAirInterface5G (OAI) gNB L1. Thor-FAPI masks uplink PUSCH/PUCCH allocations with the reserved RNTI `0xFFF0` on every L1 that does not own the UE. The patch makes OAI skip decoding those allocations, so each L1 only processes the PRBs of the UEs routed to it. It is required on every OAI L1 attached to Thor and was used with OAI tags `2026.w08` and `2026.w09` in the paper. See [`oai-patch/README.md`](./oai-patch/README.md).
+
 ## Getting started
 
 Requirements: an x86-64 host with AVX-512 support (Ice Lake or newer, required by Thor-OFH), ≥ 8 GB RAM, ≥ 10 GB free disk, and Docker. 
@@ -57,7 +59,7 @@ If you find this work relevant to your research, please cite the following:
 
 Thor-specific components are released under the [MIT License](./LICENSE) unless otherwise stated. 
 
-Third-party dependencies remain under their own licenses: `thor-ofh` builds on RANBooster (MIT, see [`thor-ofh/LICENSE`](./thor-ofh/LICENSE)) and O-RAN SC `o-du/phy` (Apache 2.0, see [`thor-ofh/NOTICE`](./thor-ofh/NOTICE)); `thor-fapi` integrates OpenAirInterface5G components under the [OAI Public License V1.1](https://openairinterface.org/legal/oai-public-license/).
+Third-party dependencies remain under their own licenses: `thor-ofh` builds on RANBooster (MIT, see [`thor-ofh/LICENSE`](./thor-ofh/LICENSE)) and O-RAN SC `o-du/phy` (Apache 2.0, see [`thor-ofh/NOTICE`](./thor-ofh/NOTICE)); `thor-fapi` integrates OpenAirInterface5G components, and `oai-patch` modifies OpenAirInterface5G source code; both are under the [OAI Public License V1.1](https://openairinterface.org/legal/oai-public-license/).
 
 ## Contact
 
